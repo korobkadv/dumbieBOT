@@ -1,3 +1,4 @@
+const express = require('express');
 import TelegramApi from 'node-telegram-bot-api';
 import 'dotenv/config';
 import {
@@ -76,3 +77,13 @@ const start = () => {
 };
 
 start();
+
+// Запустити фейковий HTTP-сервер
+const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (req, res) => {
+  res.send('Bot is running');
+});
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
