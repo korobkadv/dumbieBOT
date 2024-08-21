@@ -1,4 +1,4 @@
-version: 1
-cronJobs:
-  - schedule: '*/30 * * * *' # кожні 30 хвилин
-    command: 'curl -s  https://dumbiebot.onrender.com/ping'
+# version: 1
+# cronJobs:
+#   - schedule: '*/30 * * * *' # кожні 30 хвилин
+#     command: 'curl -s  https://dumbiebot.onrender.com/ping'
