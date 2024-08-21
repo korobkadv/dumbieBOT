@@ -1,6 +1,6 @@
 const commands = [
   { command: '/start', description: 'Початкове привітання' },
-  { command: '/help', description: 'Список усіх команд до бота' },
+  // { command: '/help', description: 'Список усіх команд до бота' },
   { command: '/image', description: 'Рандомне зображенння' },
   { command: '/top_movie', description: 'Кіно з високим рейтингом' },
   { command: '/popular_movie', description: 'Популярне з нового кіно' },

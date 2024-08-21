@@ -26,14 +26,14 @@ bot.setMyCommands(commands);
 //Головна функція
 const start = () => {
   bot.on('message', async msg => {
-    const text = msg.text;
+    let text = msg.text;
     const chatId = msg.chat.id;
     const firstName = msg.chat.first_name;
 
     const chatType = msg.chat.type;
     if (chatType === 'group' || chatType === 'supergroup') {
-      if (!text.includes('@dumbieBOT')) {
-        return; // Ігнорувати повідомлення, які не адресовані боту
+      if (text.includes('@dumbieBOT')) {
+        text = text.replace('@dumbieBOT', '').trim();
       }
     }
 
@@ -43,8 +43,8 @@ const start = () => {
           startCommand(bot, chatId, firstName)
         );
 
-      case '/help':
-        return preloader(bot, chatId, () => helpCommand(bot, chatId));
+      //   case '/help':
+      //     return preloader(bot, chatId, () => helpCommand(bot, chatId));
 
       case '/image':
         return preloader(bot, chatId, () => imageCommand(bot, chatId));
