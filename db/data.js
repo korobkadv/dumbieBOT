@@ -1,16 +1,18 @@
 // Імпортуємо всі JSON файли
-const quoteAnime = require("./quoteAnime.json");
-const quoteAuthor = require("./quoteAuthor.json");
-const quoteCartoon = require("./quoteCartoon.json");
-const quoteMovie = require("./quoteMovie.json");
+import quoteAnime from './quoteAnime.json' assert { type: 'json' };
+import quoteAuthor from './quoteAuthor.json' assert { type: 'json' };
+import quoteCartoon from './quoteCartoon.json' assert { type: 'json' };
+import quoteMovie from './quoteMovie.json' assert { type: 'json' };
+import allMusicVideo from './musicVideo.json' assert { type: 'json' };
+import allFunnyVideo from './funnyVideo.json' assert { type: 'json' };
 
 // Об'єднуємо всі цитати в один масив
-const allQuotes = [
+export const allQuotes = [
   ...quoteAnime,
   ...quoteAuthor,
   ...quoteCartoon,
   ...quoteMovie,
 ];
 
-// Експортуємо об'єднаний масив цитат
-module.exports = allQuotes;
+// Експортуємо інші дані
+export { allMusicVideo, allFunnyVideo };

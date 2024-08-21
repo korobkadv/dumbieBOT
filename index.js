@@ -1,57 +1,77 @@
-const TelegramApi = require("node-telegram-bot-api");
-const allQuotes = require("./db/data.js");
-const allMusicVideo = require("./db/musicVideo.json");
-const allImages = require("./db/images.json");
+import TelegramApi from 'node-telegram-bot-api';
+import 'dotenv/config';
+import {
+  commands,
+  startCommand,
+  helpCommand,
+  imageCommand,
+  funnyVideoCommand,
+  musicVideoCommand,
+  quoteCommand,
+  topAnimeCommand,
+  randomAnimeCommand,
+  topMovieCommand,
+  popularMovieCommand,
+} from './modules/allModules.js';
+import { preloader } from './helpers/preloader.js';
 
-const token = "7016873884:AAE_sIUu7_huxaQIkGBsHtculGbM2sobKeA";
+//Підключаєм бот з допомогою токєна
+const { TELEGRAM_TOKEN } = process.env;
+const bot = new TelegramApi(TELEGRAM_TOKEN, { polling: true });
 
-const bot = new TelegramApi(token, { polling: true });
+//Відображення команд для користувача
+bot.setMyCommands(commands);
 
-bot.setMyCommands([
-  { command: "/start", description: "Початкове привітання" },
-  { command: "/image", description: "Отримати зображенння" },
-  { command: "/quote", description: "Рандомна цитата" },
-  { command: "/music_video", description: "Музыкальне відео" },
-]);
-
+//Головна функція
 const start = () => {
-  bot.on("message", async (msg) => {
+  bot.on('message', async msg => {
     const text = msg.text;
     const chatId = msg.chat.id;
     const firstName = msg.chat.first_name;
 
-    if (text === "/start") {
-      return bot.sendMessage(
-        chatId,
-        `Привіт ${firstName}! Чим я можу допомогти?`
-      );
+    const chatType = msg.chat.type;
+    if (chatType === 'group' || chatType === 'supergroup') {
+      if (!text.includes('@dumbieBOT')) {
+        return; // Ігнорувати повідомлення, які не адресовані боту
+      }
     }
 
-    if (text === "/image") {
-      const randomIndexImages = Math.floor(Math.random() * allImages.length);
-      const randomImage = allImages[randomIndexImages];
-      return bot.sendPhoto(chatId, randomImage.url);
+    switch (text) {
+      case '/start':
+        return preloader(bot, chatId, () =>
+          startCommand(bot, chatId, firstName)
+        );
+
+      case '/help':
+        return preloader(bot, chatId, () => helpCommand(bot, chatId));
+
+      case '/image':
+        return preloader(bot, chatId, () => imageCommand(bot, chatId));
+
+      case '/funny_video':
+        return preloader(bot, chatId, () => funnyVideoCommand(bot, chatId));
+
+      case '/music_video':
+        return preloader(bot, chatId, () => musicVideoCommand(bot, chatId));
+
+      case '/quote':
+        return preloader(bot, chatId, () => quoteCommand(bot, chatId));
+
+      case '/top_anime':
+        return preloader(bot, chatId, () => topAnimeCommand(bot, chatId));
+
+      case '/random_anime':
+        return preloader(bot, chatId, () => randomAnimeCommand(bot, chatId));
+
+      case '/top_movie':
+        return preloader(bot, chatId, () => topMovieCommand(bot, chatId));
+
+      case '/popular_movie':
+        return preloader(bot, chatId, () => popularMovieCommand(bot, chatId));
+
+      default:
+        return bot.sendMessage(chatId, 'Я Вас не зрозумів!');
     }
-
-    if (text === "/music_video") {
-      const randomIndexMusicVideo = Math.floor(
-        Math.random() * allMusicVideo.length
-      );
-      const randomMusicVideo = allMusicVideo[randomIndexMusicVideo];
-      return bot.sendMessage(chatId, randomMusicVideo.url);
-    }
-
-    if (text === "/quote") {
-      const randomIndex = Math.floor(Math.random() * allQuotes.length);
-      const randomQuotes = allQuotes[randomIndex];
-
-      return bot.sendMessage(
-        chatId,
-        `${randomQuotes.quote} (${randomQuotes.title})`
-      );
-    }
-
-    return bot.sendMessage(chatId, "Я Вас не зрозумів!");
   });
 };
 
