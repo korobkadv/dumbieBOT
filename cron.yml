@@ -1,0 +1,10 @@
+version: 1
+services:
+  - type: web
+    name: bot
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    cronJobs:
+      - schedule: '*/30 * * * *' # кожні 30 хвилин
+        command: 'curl https://dumbiebot.onrender.com' # пінгує URL вашого бота
