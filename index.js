@@ -1,4 +1,4 @@
-const express = require('express');
+import express from 'express';
 import TelegramApi from 'node-telegram-bot-api';
 import 'dotenv/config';
 import {
