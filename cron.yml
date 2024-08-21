@@ -1,9 +1,9 @@
-version: 1
-services:
-  - type: web
-    name: bot
-    env: node
-    startCommand: npm start
-    cronJobs:
-      - schedule: '*/30 * * * *' # кожні 30 хвилин
-        command: 'curl https://dumbiebot.onrender.com' # пінгує URL вашого бота
+# version: 1
+# services:
+#   - type: web
+#     name: bot
+#     env: node
+#     startCommand: npm start
+#     cronJobs:
+#       - schedule: '*/30 * * * *' # кожні 30 хвилин
+#         command: 'curl https://dumbiebot.onrender.com' # пінгує URL вашого бота
