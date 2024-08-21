@@ -7,7 +7,6 @@ export const randomAnimeCommand = async (bot, chatId) => {
   try {
     const response = await axios.get(animeURL);
 
-    console.log(response.data.data);
     bot.sendMessage(
       chatId,
       `${response.data.data.title} (${response.data.data.aired.from.slice(
