@@ -1,5 +1,4 @@
 version: 1
-startCommand: npm start
 cronJobs:
   - schedule: '*/5 * * * *' # кожні 30 хвилин
     command: 'curl -s  https://dumbiebot.onrender.com/ping'
