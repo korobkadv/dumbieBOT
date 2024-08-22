@@ -88,9 +88,15 @@ app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
   res.sendStatus(200); // Обов'язково відповідайте 200 OK
 });
 
+// Обчислення шляхів
+const absolutePath = path.resolve('index.js'); // Абсолютний шлях до index.js
+const relativePath = path.relative(process.cwd(), absolutePath); // Відносний шлях до index.js від поточної робочої директорії
+
 // Фейковий HTTP-сервер для перевірки статусу бота
 app.get('/', (req, res) => {
-  res.send('Bot is running');
+  res.send(
+    `Bot is running<br>Absolute path to index.js: ${absolutePath}<br>Relative path to index.js: ${relativePath}`
+  );
 });
 
 // Запуск сервера
