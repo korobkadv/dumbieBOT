@@ -16,21 +16,27 @@ import {
 } from './modules/allModules.js';
 import { preloader } from './helpers/preloader.js';
 
-//Підключаєм бот з допомогою токєна
+// Підключаєм бот з допомогою токєна
 const { TELEGRAM_TOKEN } = process.env;
-const bot = new TelegramApi(TELEGRAM_TOKEN, { polling: true });
+const bot = new TelegramApi(TELEGRAM_TOKEN);
 
-//Відображення команд для користувача
+// Відображення команд для користувача
 bot.setMyCommands(commands);
 
-//Головна функція
-const start = () => {
-  bot.on('message', async msg => {
-    let text = msg.text;
-    const chatId = msg.chat.id;
-    const firstName = msg.chat.first_name;
+// Запускаємо Express сервер
+const app = express();
+app.use(express.json());
 
-    const chatType = msg.chat.type;
+// Обробка запитів від Telegram
+app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
+  const { message } = req.body;
+
+  if (message) {
+    const text = message.text;
+    const chatId = message.chat.id;
+    const firstName = message.chat.first_name;
+
+    const chatType = message.chat.type;
     if (chatType === 'group' || chatType === 'supergroup') {
       if (text.includes('@dumbieBOT')) {
         text = text.replace('@dumbieBOT', '').trim();
@@ -42,9 +48,6 @@ const start = () => {
         return preloader(bot, chatId, () =>
           startCommand(bot, chatId, firstName)
         );
-
-      //   case '/help':
-      //     return preloader(bot, chatId, () => helpCommand(bot, chatId));
 
       case '/image':
         return preloader(bot, chatId, () => imageCommand(bot, chatId));
@@ -73,17 +76,18 @@ const start = () => {
       default:
         return bot.sendMessage(chatId, 'Я Вас не зрозумів!');
     }
-  });
-};
+  }
 
-start();
+  res.sendStatus(200); // Обов'язково відповідайте 200 OK
+});
 
-// Запустити фейковий HTTP-сервер
-const app = express();
-const PORT = process.env.PORT || 3000;
+// Фейковий HTTP-сервер для перевірки статусу бота
 app.get('/', (req, res) => {
   res.send('Bot is running');
 });
+
+// Запуск сервера
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
