@@ -20,6 +20,11 @@ import { preloader } from './helpers/preloader.js';
 const { TELEGRAM_TOKEN } = process.env;
 const bot = new TelegramApi(TELEGRAM_TOKEN);
 
+// Використовуйте цю функцію замість console.log
+const sendLogToChat = (bot, chatId, message) => {
+  bot.sendMessage(chatId, `LOG: ${message}`);
+};
+
 // Відображення команд для користувача
 bot.setMyCommands(commands);
 
@@ -35,6 +40,8 @@ app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
     const text = message.text;
     const chatId = message.chat.id;
     const firstName = message.chat.first_name;
+
+    sendLogToChat(bot, chatId, message);
 
     const chatType = message.chat.type;
     if (chatType === 'group' || chatType === 'supergroup') {
