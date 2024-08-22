@@ -1,6 +1,7 @@
 import express from 'express';
 import TelegramApi from 'node-telegram-bot-api';
 import 'dotenv/config';
+import path from 'path';
 import {
   commands,
   startCommand,
