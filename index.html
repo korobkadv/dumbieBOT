@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dumbieBOT Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/jpeg" href="img/logo.jpeg">
+    <style>
+        :root {
+            --primary-color: #007bff; /* Синій */
+            --primary-hover: #0056b3;
+            --secondary-color: #6c757d; /* Сірий */
+            --background-color: #f8f9fa; /* Дуже світло-сірий */
+            --container-bg: #ffffff; /* Білий */
+            --text-color: #212529; /* Темно-сірий (майже чорний) */
+            --border-radius: 8px;
+            --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header-logo {
+            height: 30px;
+            width: auto;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .page-wrapper {
+            /* На широких екранах буде flex */
+        }
+
+        .sidebar {
+            /* Стилі для вузьких екранів за замовчуванням */
+            width: 100%;
+            padding: 10px 15px;
+            background-color: var(--container-bg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .content-area {
+             padding: 15px;
+        }
+
+        .container {
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            max-width: 800px; /* Обмеження ширини контенту */
+            margin: 0 auto 30px auto; /* Центруємо контейнер в content-area */
+        }
+
+        .command-grid {
+            /* За замовчуванням - гнучка сітка */
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 10px; 
+        }
+
+        .command {
+            padding: 10px 15px; 
+            background: linear-gradient(145deg, var(--primary-color), #005ec4);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9rem; 
+            font-weight: 500;
+            text-align: center;
+            transition: transform 0.2s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+            margin: 0; /* Прибираємо margin, використовуємо gap */
+            flex-grow: 1; 
+            min-width: 120px; 
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+        }
+
+        .command:hover {
+            background: linear-gradient(145deg, var(--primary-hover), #004a9e);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .command:active {
+             transform: translateY(0);
+        }
+
+        /* Спеціальні стилі для кнопок відповідей ігор */
+        .tf-answer-button, .millionaire-answer-button {
+             padding: 10px 15px;
+             margin: 5px 0;
+             width: calc(50% - 10px); /* По дві кнопки в ряд */
+             display: inline-block;
+             background-color: var(--secondary-color);
+             color: #fff;
+             border: none;
+             border-radius: var(--border-radius);
+             cursor: pointer;
+             font-size: 0.95rem;
+             transition: background-color 0.3s ease;
+        }
+        
+        .tf-answer-button:hover, .millionaire-answer-button:hover {
+            background-color: #5a6268;
+        }
+
+        .output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: var(--border-radius);
+            min-height: 60px;
+            text-align: left; /* Вирівнюємо текст відповіді по лівому краю */
+            overflow-wrap: break-word; /* Перенос довгих слів/URL */
+            animation: fadeIn 0.5s ease; /* Анімація появи */
+            border-left: 4px solid var(--primary-color); /* Додаємо ліву межу для акценту */
+        }
+        
+        .output img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: block; /* Щоб img займав повну ширину */
+        }
+        
+        .output p {
+            margin-bottom: 0.8em;
+        }
+        .output p:last-child {
+            margin-bottom: 0;
+        }
+        .output ul {
+             list-style-position: inside;
+             padding-left: 10px;
+        }
+        .output li {
+            margin-bottom: 5px;
+        }
+
+        .output .command-info {
+            font-size: 0.85rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #dee2e6; 
+        }
+
+        .output .info-poster {
+            display: block; /* Для роботи margin: auto */
+            max-width: 250px; /* Обмежуємо ширину постера */
+            height: auto; /* Зберігаємо пропорції */
+            margin: 15px auto 0 auto; /* Відступ зверху, центрування по горизонталі */
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Анімація */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Адаптивність */
+        /* --- Широкі екрани (Sidebar Layout) --- */
+        @media (min-width: 992px) { 
+            .page-wrapper {
+                display: flex;
+                align-items: flex-start; /* Вирівнюємо по верху */
+            }
+            .sidebar {
+                flex: 0 0 240px; /* Фіксована ширина бічної панелі */
+                padding: 20px;
+                height: calc(100vh - 62px); /* Висота мінус шапка (приблизно) */
+                overflow-y: auto; /* Прокрутка, якщо кнопок багато */
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1); /* Тінь справа */
+                 background-color: #f8f9fa; /* Трохи інший фон */
+            }
+             .content-area {
+                flex-grow: 1;
+                padding: 20px; /* Відступи для контенту */
+                 height: calc(100vh - 62px);
+                 overflow-y: auto;
+            }
+            .container {
+                 margin: 0 auto 30px auto; /* Центрування всередині content-area */
+            }
+            .command-grid {
+                display: flex;
+                flex-direction: column; /* Кнопки в стовпчик */
+                gap: 10px; /* Відступ між кнопками */
+                justify-content: flex-start; /* Прибираємо центрування */
+            }
+            .command {
+                 width: 100%; /* Кнопки на всю ширину sidebar */
+                 flex-grow: 0; /* Не розтягуємо */
+                 min-width: auto; /* Не потрібна мін. ширина */
+                 text-align: left; /* Вирівнюємо текст зліва */
+                 padding: 10px 15px;
+            }
+        }
+
+        /* --- Середні екрани (Кнопки зверху, 3 колонки) --- */
+         @media (max-width: 991px) and (min-width: 576px) {
+            .command-grid {
+                 /* Можна повернути grid для 3 колонок */
+                 display: grid;
+                 grid-template-columns: 1fr 1fr 1fr;
+            }
+            .command {
+                 min-width: auto;
+                 flex-grow: 0;
+            }
+         }
+         
+        /* --- Малі екрани (Кнопки зверху, 2 колонки) --- */
+        @media (max-width: 575px) {
+             .sidebar {
+                 padding: 10px 10px 5px 10px;
+             }
+              .content-area {
+                  padding: 10px;
+              }
+             .container {
+                 padding: 15px;
+                 margin-top: 10px;
+                 margin-bottom: 15px;
+             }
+             .command-grid {
+                  gap: 8px;
+             }
+             .command {
+                 min-width: calc(50% - 4px); /* 2 колонки */
+                 flex-grow: 0;
+                 font-size: 0.85rem;
+                 padding: 8px 10px;
+             }
+             .output .command-info {
+                 font-size: 0.8rem;
+                 margin-bottom: 8px;
+                 padding-bottom: 8px;
+             }
+             header h1 {
+                 font-size: 1.4rem;
+             }
+              .tf-answer-button, .millionaire-answer-button {
+                 font-size: 0.9rem;
+                 padding: 8px 10px;
+                 width: calc(50% - 8px);
+             }
+        }
+
+        @media (max-width: 400px) {
+             header {
+                 padding: 8px 15px;
+                 gap: 8px;
+             }
+             .header-logo {
+                 height: 25px;
+             }
+             header h1 {
+                 font-size: 1.2rem;
+             }
+        }
+
+        .category-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px; /* Відступ від опису */
+        }
+        .image-category-button {
+             /* Використовуємо стилі .command, але можемо трохи змінити */
+             flex-grow: 1;
+             min-width: 130px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <img src="img/logo.jpeg" alt="dumbieBOT Logo" class="header-logo">
+        <h1>@dumbieBOT Interface</h1>
+    </header>
+
+    <div class="page-wrapper">
+        <aside class="sidebar">
+            <div class="command-grid">
+                <!-- Кнопки тепер тут -->
+                <button class="command" data-command="/start">🚀 start</button> 
+                <button class="command" data-command="/image">🖼️ image</button>
+                <button class="command" data-command="/quote">❝ quote</button>
+                <button class="command" data-command="/top_movie">🎬 top movie</button>
+                <button class="command" data-command="/popular_movie">🔥 popular movie</button>
+                <button class="command" data-command="/top_anime">🍥 top anime</button>
+                <button class="command" data-command="/random_anime">🎲 random anime</button>
+                <button class="command" data-command="/music_video">🎵 music video</button>
+                <button class="command" data-command="/funny_video">😂 funny video</button>
+                <button class="command" data-command="/action">🤸 action</button>
+                <button class="command" data-command="/true_or_false">⚖️ true or false</button>
+                <button class="command" data-command="/millionaire">💰 millionaire</button>
+            </div>
+        </aside>
+
+        <main class="content-area">
+            <div class="container">
+                <!-- Залишився тільки блок виводу -->
+                <div class="output" id="output">
+                     <p>Натисніть кнопку, щоб викликати команду бота.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const outputDiv = document.getElementById('output');
+        const commandButtons = document.querySelectorAll('.command'); // Включаючи кнопки категорій
+
+        commandButtons.forEach(button => {
+            // Додаємо перевірку, чи це кнопка категорії зображення
+            if (!button.classList.contains('image-category-button')) {
+                button.addEventListener('click', () => {
+                    const command = button.getAttribute('data-command');
+                    sendCommand(command);
+                });
+            }
+            // Обробник для кнопок категорій додається в renderApiResponse
+        });
+
+        function sendCommand(command, action = 'get_command', extraData = {}) {
+            outputDiv.innerHTML = '<p class="loading">Завантаження...</p>';
+
+            const payload = {
+                command: command,
+                action: action, // Передаємо дію
+                chatId: 'web_user' // Ідентифікатор для веб
+            };
+            // Додаємо додаткові дані
+            Object.assign(payload, extraData);
+
+            fetch('api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                renderApiResponse(command, data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                outputDiv.innerHTML = `<p class="error">Сталася помилка мережі або сервера.</p>`;
+            });
+        }
+
+        function renderApiResponse(command, data) {
+            outputDiv.innerHTML = ''; 
+
+            if (data.content && (data.type === 'text' || data.type === 'error')) {
+                 outputDiv.innerHTML = data.content;
+            } else if (command === '/image' && data.type === 'image_categories' && data.content) {
+                // Нова обробка для кнопок категорій
+                outputDiv.innerHTML = data.content;
+                // Додаємо обробники до нових кнопок
+                document.querySelectorAll('.image-category-button').forEach(button => {
+                    button.addEventListener('click', handleImageCategoryClick);
+                });
+            } else if (command === '/true_or_false' && data.type === 'tf_question_data') {
+                renderTFQuestion(data.content, data.fact_id);
+            } else if (command === '/millionaire' && data.type === 'millionaire_question_data') {
+                 renderMillionaireQuestion(data.content, data.options, data.question_id);
+            } else {
+                const descriptionHtml = `<div class="command-info">Невідома відповідь</div>`;
+                outputDiv.innerHTML = descriptionHtml + `<p>Неочікуваний формат відповіді для ${htmlspecialchars(command)}.</p><pre>${htmlspecialchars(JSON.stringify(data, null, 2))}</pre>`;
+            }
+        }
+
+        // Нова функція для обробки кліку на категорію зображення
+        function handleImageCategoryClick(event) {
+            const button = event.target;
+            const category = button.getAttribute('data-category');
+            // Викликаємо sendCommand з новою дією та категорією
+            sendCommand('/image', 'get_image_category', { category: category });
+        }
+
+        function renderTFQuestion(questionHtml, factId) {
+            // questionHtml вже містить опис і питання
+            outputDiv.innerHTML = questionHtml + `
+                <div style="margin-top: 15px;">
+                    <button class="tf-answer-button" data-fact-id="${factId}" data-answer="true">Правда</button>
+                    <button class="tf-answer-button" data-fact-id="${factId}" data-answer="false">Брехня</button>
+                </div>
+            `;
+            // Додаємо обробники для нових кнопок
+            document.querySelectorAll('.tf-answer-button').forEach(button => {
+                button.addEventListener('click', handleTFAnswerClick);
+            });
+        }
+
+        function handleTFAnswerClick(event) {
+            const button = event.target;
+            const factId = button.getAttribute('data-fact-id');
+            const userAnswer = button.getAttribute('data-answer') === 'true';
+
+            outputDiv.innerHTML = 'Перевірка відповіді...'; // Повідомлення про завантаження
+
+            fetch('./api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    command: '/true_or_false', // Вказуємо команду
+                    action: 'check_tf',       // Вказуємо дію
+                    fact_id: parseInt(factId),  // ID факту
+                    user_answer: userAnswer    // Відповідь користувача
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+                .then(data => {
+                 // Для результату гри Правда/Брехня нам НЕ потрібен HTML з API,
+                 // бо ми його формуємо тут у renderTFResult
+                 if(data.type === 'tf_result') { 
+                    renderTFResult(data); 
+                 } else {
+                    // Показуємо помилку або неочікувану відповідь
+                    renderApiResponse('/true_or_false', data); 
+                 }
+            })
+            .catch(error => {
+                console.error('Error checking answer:', error);
+                outputDiv.innerHTML = 'Сталася помилка під час перевірки відповіді.';
+            });
+        }
+
+        function renderTFResult(data) {
+             if (data.type === 'error') {
+                outputDiv.innerHTML = `<p>Помилка: ${htmlspecialchars(data.content)}</p>`;
+            } else if (data.type === 'tf_result') {
+                const resultText = data.correct ? '😆👍 Правильно!' : '😝👎 Неправильно!';
+                const description = htmlspecialchars(data.description);
+                // Формуємо HTML тут
+                outputDiv.innerHTML = `
+                    <p>${resultText}</p>
+                    <p>${description}</p>
+                `;
+                    } else {
+                 outputDiv.innerHTML = `<p>Неочікуваний формат відповіді при перевірці.</p><pre>${htmlspecialchars(JSON.stringify(data, null, 2))}</pre>`;
+            }
+        }
+        
+        // ---- Нові функції для Мільйонера ----
+        function renderMillionaireQuestion(questionHtml, options, questionId) {
+             // questionHtml вже містить опис і питання
+            let optionsHtml = '';
+            options.forEach(option => {
+                const escapedOption = htmlspecialchars(option);
+                optionsHtml += `
+                    <button class="millionaire-answer-button" 
+                            data-question-id="${questionId}" 
+                            data-answer="${escapedOption}"
+                            style="display: block; margin: 5px 0; width: 100%; padding: 8px;">
+                        ${escapedOption}
+                    </button>
+                `;
+            });
+
+            outputDiv.innerHTML = questionHtml + `
+                <div style="margin-top: 15px;">
+                    ${optionsHtml}
+                </div>
+            `;
+            // Додаємо обробники для нових кнопок відповідей
+            document.querySelectorAll('.millionaire-answer-button').forEach(button => {
+                button.addEventListener('click', handleMillionaireAnswerClick);
+            });
+        }
+
+        function handleMillionaireAnswerClick(event) {
+            const button = event.target;
+            const questionId = button.getAttribute('data-question-id');
+            const userAnswer = button.getAttribute('data-answer'); // Текст відповіді
+
+            outputDiv.innerHTML = 'Перевірка відповіді...';
+
+            fetch('./api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    command: '/millionaire',       // Вказуємо команду
+                    action: 'check_millionaire',  // Вказуємо дію
+                    question_id: parseInt(questionId),
+                    user_answer: userAnswer       // Надсилаємо текст відповіді
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Використовуємо існуючу функцію renderApiResponse для показу результату,
+                // оскільки api.php поверне тип 'text' з готовим HTML
+                renderApiResponse('/millionaire', data);
+                })
+                .catch(error => {
+                console.error('Error checking millionaire answer:', error);
+                outputDiv.innerHTML = 'Сталася помилка під час перевірки відповіді Мільйонера.';
+            });
+        }
+        // ---- Кінець нових функцій ----
+        
+        // Проста функція для екранування HTML (запобігання XSS)
+        function htmlspecialchars(str) {
+            if (typeof str !== 'string') return str;
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return str.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+    </script>
+</body>
+
+</html>
