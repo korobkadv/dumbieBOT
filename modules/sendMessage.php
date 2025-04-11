@@ -31,7 +31,11 @@ function sendMessage($chatId, $message, $method, $keyboard = null, $forceNoParse
         $content = json_encode($postData);
         $parseModeSet = true; // DEBUG
     } else {
-        
+        // Додаємо логування для випадку forceNoParseMode = true
+        if ($method === 'text' && $forceNoParseMode === true) {
+             error_log("sendMessage DEBUG (forceNoParseMode=true): Method='{$method}', RawMessage='{$message}', ContentType='{$contentType}', BuiltContent='{$content}'");
+        }
+        // Кінець логування
     }
 
     if ($keyboard) {
@@ -56,6 +60,10 @@ function sendMessage($chatId, $message, $method, $keyboard = null, $forceNoParse
              $content = json_encode($postData);
         }
     }
+
+    // Додаємо логування перед самим запитом
+    error_log("sendMessage DEBUG: Final Send: URL='{$url}', ContentType='{$contentType}', Content='{$content}'");
+    // Кінець логування
 
     $options = [
         'http' => [
@@ -144,4 +152,57 @@ function sendChatTyping($chatId) {
     // Ми не логуємо помилку тут, бо це не критично, якщо індикатор не покажеться
     // Але можна додати логування за бажанням
     return @file_get_contents($url, false, $context); 
+}
+
+/**
+ * Надсилає фотографію в чат з можливим описом та клавіатурою.
+ *
+ * @param int|string $chatId ID чату.
+ * @param string $photoUrl URL фотографії.
+ * @param string|null $caption Опис фото (до 1024 символів), може містити MarkdownV2.
+ * @param string|null $replyMarkup JSON-рядок або масив для inline-клавіатури.
+ * @return string|false Відповідь від Telegram API або false у разі помилки.
+ */
+function sendPhoto($chatId, $photoUrl, $caption = null, $replyMarkup = null) {
+    $url = API_URL . 'sendPhoto';
+
+    $postData = [
+        'chat_id' => $chatId,
+        'photo' => $photoUrl,
+    ];
+
+    if ($caption !== null) {
+        $postData['caption'] = $caption;
+        $postData['parse_mode'] = 'MarkdownV2'; // Вмикаємо Markdown для опису
+    }
+
+    if ($replyMarkup !== null) {
+        // Переконуємося, що replyMarkup - це JSON-рядок
+        if (is_array($replyMarkup)) {
+            $postData['reply_markup'] = json_encode($replyMarkup);
+        } else {
+            $postData['reply_markup'] = $replyMarkup;
+        }
+    }
+
+    $options = [
+        'http' => [
+            'method'  => 'POST',
+            // Надсилаємо як application/x-www-form-urlencoded, бо URL фото може бути довгим
+            // і Telegram API краще працює з цим форматом для sendPhoto/sendVideo
+            'header'  => "Content-type: application/x-www-form-urlencoded\r\n", 
+            'content' => http_build_query($postData),
+            'ignore_errors' => true 
+        ],
+    ];
+    $context  = stream_context_create($options);
+    $response = @file_get_contents($url, false, $context);
+    
+    // Логування помилок
+    $responseData = json_decode($response, true);
+    if (!$responseData || !$responseData['ok']) {
+        error_log("Telegram API Error (sendPhoto): " . $response . "\nRequest data: " . print_r($postData, true));
+    }
+    
+    return $response;
 }

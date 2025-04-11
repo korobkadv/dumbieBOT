@@ -1,9 +1,10 @@
 <?php
 require_once 'sendMessage.php'; // Переконайтесь, що цей файл підключено
+require_once __DIR__ . '/../helpers/escapeMarkdownV2.php'; // Потрібно для escapeMarkdownV2, якщо використовується
 
-function preloader($chatId, $callback, $message = "⏳ Завантаження...") {
+function preloader($chatId, callable $callback, $preloaderText = "Завантаження...") {
     // Надсилаємо повідомлення без parse_mode
-    $response = sendMessage($chatId, $message, 'text', null, true);
+    $response = sendMessage($chatId, $preloaderText, 'text', null, true);
     
     $responseData = json_decode($response, true);
     $messageId = $responseData['result']['message_id'] ?? null;

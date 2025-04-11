@@ -18,6 +18,8 @@ require_once './modules/funnyVideoCommand.php';
 require_once './modules/game/millionaire.php';
 require_once './modules/actionCommand.php';
 require_once './modules/game/trueOrFalseGame.php';
+require_once './modules/randomAnimeCommand.php';
+require_once './modules/randomMovieCommands.php';
 
 
 $userStates = [];
@@ -72,53 +74,61 @@ function processMessage($message) {
         preloader($chatId, function() use ($chatId) {
             $movieData = topMovieCommand($chatId);
             if ($movieData['type'] === 'movie_data') {
-                $title = $movieData['title'] ?? 'Назва невідома'; 
-                $year = $movieData['release_year'] ?? '';
-                $rating = $movieData['vote_average'] ?? '-';
+                // Екрануємо отримані дані
+                $title = escapeMarkdownV2($movieData['title'] ?? 'Назва невідома'); 
+                $year = escapeMarkdownV2($movieData['release_year'] ?? 'N/A');
+                $rating = escapeMarkdownV2($movieData['vote_average'] ?? 'N/A');
                 $posterPath = $movieData['poster_path'] ?? null;
+                $overview = escapeMarkdownV2($movieData['overview'] ?? ''); // Додано витягнення та екранування опису
                 
-                // Формуємо текст БЕЗ зірочок
-                $messageText = "{$title} ({$year})\n⭐ {$rating}";
-                
-                // Все одно екрануємо інші потенційні спецсимволи
-                $escapedMessageText = escapeMarkdownV2($messageText);
+                // Формуємо текст з екранованими даними, без зірочок навколо назви
+                $messageText = "{$title} \({$year}\)
+⭐ {$rating}";
+                // Опис додамо пізніше, якщо не буде постера
                 
                 // 1. Відправляємо текст (parse_mode увімкнено за замовч.)
-                sendMessage($chatId, $escapedMessageText, 'text');
+                sendMessage($chatId, $messageText, 'text');
                 
-                // 2. Фото
+                // 2. Фото або опис
                 if ($posterPath) {
                     $posterUrl = "https://image.tmdb.org/t/p/w500" . $posterPath;
                     sendMessage($chatId, $posterUrl, 'photo'); 
+                } elseif (!empty($overview)) {
+                    // Якщо немає постера, але є опис, надсилаємо його
+                     sendMessage($chatId, $overview, 'text');
                 }
             } elseif ($movieData['type'] === 'error') {
                 sendMessage($chatId, $movieData['content'], 'text', null, true); 
             }
-        }); 
+            });
     } elseif (strpos($text, "/popular_movie") === 0) {
         sendChatTyping($chatId);
         preloader($chatId, function() use ($chatId) {
            $movieData = popularMovieCommand($chatId);
             if ($movieData['type'] === 'movie_data') {
-                $title = $movieData['title'] ?? 'Назва невідома';
-                $year = $movieData['release_year'] ?? '';
-                $rating = $movieData['vote_average'] ?? '-';
+                // Екрануємо отримані дані
+                $title = escapeMarkdownV2($movieData['title'] ?? 'Назва невідома');
+                $year = escapeMarkdownV2($movieData['release_year'] ?? 'N/A');
+                $rating = escapeMarkdownV2($movieData['vote_average'] ?? 'N/A');
                 $posterPath = $movieData['poster_path'] ?? null;
+                $overview = escapeMarkdownV2($movieData['overview'] ?? '');
 
-                // Формуємо текст БЕЗ зірочок
-                $messageText = "{$title} ({$year})\n⭐ {$rating}";
-                $escapedMessageText = escapeMarkdownV2($messageText);
+                // Формуємо текст з екранованими даними, без зірочок
+                $messageText = "{$title} \({$year}\)
+⭐ {$rating}";
 
-                sendMessage($chatId, $escapedMessageText, 'text');
+                sendMessage($chatId, $messageText, 'text');
 
                  if ($posterPath) {
                      $posterUrl = "https://image.tmdb.org/t/p/w500" . $posterPath;
                      sendMessage($chatId, $posterUrl, 'photo'); 
+                 } elseif (!empty($overview)) {
+                    sendMessage($chatId, $overview, 'text');
                  }
             } elseif ($movieData['type'] === 'error') {
                 sendMessage($chatId, $movieData['content'], 'text', null, true); 
             }
-        }); 
+            });
     } elseif (strpos($text, "/top_anime") === 0) {
         sendChatTyping($chatId);
         preloader($chatId, function() use ($chatId) {
@@ -144,33 +154,69 @@ function processMessage($message) {
                 error_log("dumbiebot: Unexpected result type from topAnimeCommand: " . $result['type']);
                 sendMessage($chatId, 'Сталася внутрішня помилка при пошуку аніме.', 'text');
             }
-        });
+            });
     } elseif (strpos($text, "/random_anime") === 0) {
-        sendChatTyping($chatId);
-        preloader($chatId, function() use ($chatId) {
-            $result = randomAnimeCommand($chatId);
-            
-            if ($result['type'] === 'anime_data') {
-                $escapedTitle = escapeMarkdownV2($result['title']);
-                $escapedYear = escapeMarkdownV2($result['year']);
-                $escapedScore = escapeMarkdownV2($result['score']);
-                
-                $messageText = "*" . $escapedTitle . "* \(" . $escapedYear . "\)\n⭐ " . $escapedScore;
-                
-                sendMessage($chatId, $messageText, 'text');
-                
-                if (!empty($result['image_url'])) {
-                    sendMessage($chatId, $result['image_url'], 'photo');
-                } else {
-                    sendMessage($chatId, '_(Зображення для цього аніме відсутнє)_ ', 'text');
-                }
-            } elseif ($result['type'] === 'error') {
-                sendMessage($chatId, $result['content'], 'text');
-            } else {
-                error_log("dumbiebot: Unexpected result type from randomAnimeCommand: " . $result['type']);
-                sendMessage($chatId, 'Сталася внутрішня помилка при пошуку аніме.', 'text');
+        sendChatTyping($chatId); 
+        
+        // Отримуємо жанри
+        $genres = getAnimeGenres();
+        
+        if (empty($genres)) {
+            sendMessage($chatId, '❌ Не вдалося завантажити список жанрів аніме.', 'text', null, true);
+            return;
+        }
+        
+        // Формуємо клавіатуру
+        $buttons = [];
+        // Додаємо кнопку "Будь-який жанр" першою
+        $buttons[] = [['text' => '🎲 Будь-який жанр', 'callback_data' => 'anime_genre|any']]; 
+        
+        $row = [];
+        $maxButtonsPerRow = 2; // Кількість кнопок у ряду для інших жанрів
+        
+        foreach ($genres as $genre) {
+            $row[] = ['text' => $genre['name'], 'callback_data' => 'anime_genre|' . $genre['id']];
+            if (count($row) >= $maxButtonsPerRow) {
+                $buttons[] = $row;
+                $row = []; // Починаємо новий ряд
             }
-        });
+        }
+        if (!empty($row)) { // Додаємо останній неповний ряд
+            $buttons[] = $row;
+        }
+
+        $keyboard = ['inline_keyboard' => $buttons];
+        sendMessage($chatId, escapeMarkdownV2("⛩️ Оберіть жанр аніме:"), 'text', $keyboard);
+    } elseif (strpos($text, "/random_movie") === 0) {
+        sendChatTyping($chatId);
+        
+        $genres = getMovieGenres();
+        if (empty($genres)) {
+            sendMessage($chatId, '❌ Не вдалося завантажити список жанрів фільмів.', 'text', null, true);
+            return;
+        }
+        
+        $buttons = [];
+        $buttons[] = [['text' => '🎲 Будь-який жанр', 'callback_data' => 'movie_genre|any']]; 
+        
+        $row = [];
+        $maxButtonsPerRow = 2; 
+        
+        foreach ($genres as $genre) {
+            // Обрізаємо довгі назви жанрів, якщо потрібно
+            $genreName = mb_strlen($genre['name']) > 25 ? mb_substr($genre['name'], 0, 22) . '...' : $genre['name'];
+            $row[] = ['text' => $genreName, 'callback_data' => 'movie_genre|' . $genre['id']];
+            if (count($row) >= $maxButtonsPerRow) {
+                $buttons[] = $row;
+                $row = [];
+            }
+        }
+        if (!empty($row)) { 
+            $buttons[] = $row;
+        }
+
+        $keyboard = ['inline_keyboard' => $buttons];
+        sendMessage($chatId, escapeMarkdownV2("🎬 Оберіть жанр фільму:"), 'text', $keyboard);
     } elseif (strpos($text, "/action") === 0) {
         actionCommand($chatId);
     } elseif (is_numeric($text) && isset($GLOBALS['userStates'][$chatId]) && $GLOBALS['userStates'][$chatId] === 'waiting_for_action_number') {
@@ -195,7 +241,7 @@ function processMessage($message) {
                 error_log("dumbiebot: Unexpected result type from quoteCommand: " . $result['type']);
                 sendMessage($chatId, 'Сталася внутрішня помилка при отриманні цитати.', 'text');
             }
-        });
+            });
     } elseif (strpos($text, "/music_video") === 0) {
         sendChatTyping($chatId);
         preloader($chatId, function() use ($chatId) {
@@ -210,7 +256,7 @@ function processMessage($message) {
                 error_log("dumbiebot: Unexpected result type from musicVideoCommand: " . $result['type']);
                 sendMessage($chatId, 'Сталася внутрішня помилка при пошуку відео.', 'text');
             }
-        });
+            });
     } elseif (strpos($text, "/funny_video") === 0) {
         sendChatTyping($chatId);
         preloader($chatId, function() use ($chatId) {
@@ -224,7 +270,7 @@ function processMessage($message) {
                  error_log("dumbiebot: Unexpected result type from funnyVideoCommand: " . $result['type']);
                  sendMessage($chatId, 'Сталася внутрішня помилка при пошуку відео.', 'text');
              }
-        });
+            });
     } elseif (strpos($text, "/true_or_false") === 0) {
         sendChatTyping($chatId);
         trueOrFalseGame($chatId);
@@ -232,9 +278,50 @@ function processMessage($message) {
         sendChatTyping($chatId);
         millionaire($chatId);
     } elseif (strpos($text, "/start") === 0) {
-        // Екрануємо статичне вітальне повідомлення
-        $startMessage = escapeMarkdownV2('Привіт! Я розумію тількі конкретні команди. Щоб побачити список команд скористайся кнопкою "Меню" або почни писати "/"');
-        sendMessage($chatId, $startMessage, 'text');
+        // Реєструємо команди при старті
+        registerTelegramCommands(); 
+        
+        // Це повідомлення вже екрановано для MarkdownV2
+        $welcomeMessage = "Привіт\! Я dumbieBOT\.
+Готовий до роботи\.
+Обери команду:";
+        
+        // Надсилаємо повідомлення як є, без додаткового екранування
+        sendMessage($chatId, $welcomeMessage, 'text');
+    } elseif (strpos($text, "/help") === 0) {
+        // Send help message with list of commands
+        $helpText = "*Доступні команди:*
+
+" .
+                    "`/image` \- Випадкове зображення або за категорією
+" .
+                    "`/top_movie` \- Топ фільмів за рейтингом
+" .
+                    "`/popular_movie` \- Популярні фільми зараз
+" .
+                    "`/random_movie` \- Випадковий фільм
+" .
+                    "`/top_anime` \- Топ аніме за рейтингом
+" .
+                    "`/random_anime` \- Випадкове аніме
+" .
+                    "`/quote` \- Випадкова цитата
+" .
+                    "`/music_video` \- Випадковий музичний кліп
+" .
+                    "`/funny_video` \- Випадкове смішне відео
+" .
+                    "`/true_or_false` \- Гра 'Правда чи Брехня'
+" .
+                    "`/millionaire` \- Гра 'Хто хоче стати мільйонером?' \(веб\-версія\)
+" .
+                    "`/start` \- Почати роботу з ботом
+" .
+                    "`/help` \- Допомога по командам";
+
+        // Escape markdown for the help text
+        $escapedHelpText = escapeMarkdownV2($helpText);
+        sendMessage($chatId, $escapedHelpText, 'MarkdownV2');
     } else {
         if (!is_numeric($text) || !isset($GLOBALS['userStates'][$chatId])) {
             // Екрануємо повідомлення про нерозуміння
@@ -315,7 +402,7 @@ function processCallbackQuery($chatId, $callbackQueryId, $data, $messageId, $upd
                  // Повідомлення про помилку вже містить крапку, тому надсилаємо без parse_mode
                  sendMessage($chatId, $imageData['content'], 'text', null, true);
              }
-        }, "⏳ Шукаю зображення категорії '{$categoryQuery}'..."); // Можна кастомізувати текст прелоадера
+        }, "Шукаю зображення категорії '{$categoryQuery}'..."); // Можна кастомізувати текст прелоадера
         
     } elseif (strpos($data, 'action_range|') === 0) { // <-- Обробник для діапазону дій
         // 1. Витягуємо діапазон
@@ -354,15 +441,132 @@ function processCallbackQuery($chatId, $callbackQueryId, $data, $messageId, $upd
              sendMessage($chatId, $actionResult['content'], 'text', null, true);
          }
 
+    } elseif (strpos($data, 'movie_genre|') === 0) { // <-- Новий обробник для жанру фільмів
+        $genrePart = substr($data, strlen('movie_genre|'));
+
+        answerCallbackQuery($callbackQueryId);
+        sendChatTyping($chatId);
+
+        $preloaderText = "Шукаю випадковий фільм...";
+        $genreId = null; // За замовчуванням - будь-який
+
+        if ($genrePart !== 'any') {
+            $genreId = (int)$genrePart;
+            if ($genreId <= 0) {
+                sendMessage($chatId, '❌ Некоректний ID жанру фільму.', 'text', null, true);
+                return; // Виходимо, якщо ID некоректний
+            }
+            $preloaderText = "Шукаю випадковий фільм цього жанру...";
+        } else {
+             $preloaderText = "Шукаю будь-який випадковий фільм...";
+        }
+
+        preloader($chatId, function() use ($chatId, $genreId) {
+             $movieResult = getRandomMovie($genreId, true); // Отримуємо екрановані дані
+
+             if ($movieResult && $movieResult['type'] === 'movie_data') {
+                 $title = $movieResult['title']; // Вже екрановано
+                 $rating = $movieResult['vote_average']; // Вже екрановано
+                 $year = $movieResult['release_year']; // Вже екрановано
+                 $overview = $movieResult['overview']; // Вже екрановано
+                 $posterPath = $movieResult['poster_path'];
+                 $posterUrl = $posterPath ? "https://image.tmdb.org/t/p/w500" . $posterPath : null;
+
+                 // Прибираємо Markdown зірочки, залишаємо екранування для року
+                 $caption = "{$title} \({$year}\)
+
+⭐ Рейтинг: {$rating}
+
+{$overview}";
+                 
+                 if ($posterUrl) {
+                     // Обрізаємо опис, якщо він занадто довгий для підпису під фото (макс 1024)
+                     $maxCaptionLength = 1000; // З запасом
+                     if (mb_strlen($caption) > $maxCaptionLength) {
+                         $caption = mb_substr($caption, 0, $maxCaptionLength) . "\.\.\.";
+                     }
+                     sendPhoto($chatId, $posterUrl, $caption); 
+                 } else {
+                      // Якщо немає постера, надсилаємо як текст (тут теж потрібен Markdown)
+                      sendMessage($chatId, $caption, 'text');
+                 }
+             } elseif ($movieResult && $movieResult['type'] === 'error') {
+                 sendMessage($chatId, $movieResult['content'], 'text', null, true);
+             } else {
+                 sendMessage($chatId, '❌ Сталася невідома помилка при пошуку фільму.', 'text', null, true);
+             }
+        }, $preloaderText);
+
+    } elseif (strpos($data, 'anime_genre|') === 0) {
+        // 1. Витягуємо частину після префіксу
+        $genrePart = substr($data, strlen('anime_genre|'));
+
+        // 2. Відповідаємо на callback query
+        answerCallbackQuery($callbackQueryId);
+
+        // 3. Показуємо, що бот працює
+        sendChatTyping($chatId);
+
+        // 4. Визначаємо текст прелоадера ПЕРЕД викликом
+        $preloaderText = "Шукаю випадкове аніме..."; // Текст за замовчуванням
+        if ($genrePart === 'any') {
+            $preloaderText = "Шукаю будь-яке випадкове аніме...";
+        } else {
+            // Тут можна додати логіку отримання назви жанру за ID і додати до тексту,
+            // але поки що залишимо загальний текст для конкретного жанру.
+            $preloaderText = "Шукаю випадкове аніме цього жанру...";
+        }
+
+        // 5. Запускаємо в прелоадері отримання та відправку аніме
+        preloader($chatId, function() use ($chatId, $genrePart) { // Передаємо лише потрібні змінні
+             
+             $animeResult = null;
+             // Текст прелоадера вже визначено вище
+
+             // Визначаємо, яку функцію викликати
+             if ($genrePart === 'any') {
+                 $animeResult = getTrulyRandomAnime();
+             } else {
+                 $genreId = (int)$genrePart; // Перетворюємо на число, якщо це ID
+                 if ($genreId > 0) { // Перевіряємо, чи ID коректний
+                     $animeResult = getRandomAnimeByGenre($genreId);
+                 } else {
+                     $animeResult = ['type' => 'error', 'content' => '❌ Некоректний ID жанру.'];
+                 }
+             }
+             
+             // Обробка результату (залишається майже такою ж)
+             if ($animeResult && $animeResult['type'] === 'anime_data') {
+                 // Відновлюємо витягнення та екранування потрібних даних
+                 $title = escapeMarkdownV2($animeResult['title']);
+                 $score = escapeMarkdownV2($animeResult['score']);
+                 $year = escapeMarkdownV2($animeResult['year']);
+                 // $episodes = ...; // Епізоди залишаються закоментованими
+                 
+                 // Формуємо $caption з ВЖЕ ЕКРАНОВАНИМИ змінними
+                 $caption = "*{$title}*
+
+⭐ Рейтинг: {$score}
+📅 Рік: {$year}"; // Видалено частину про епізоди
+                 
+                 // Надсилаємо фото з описом
+                 sendPhoto($chatId, $animeResult['image_url'], $caption);
+                 
+             } elseif ($animeResult && $animeResult['type'] === 'error') {
+                 // Надсилаємо текст помилки
+                 sendMessage($chatId, $animeResult['content'], 'text', null, true);
+             } else {
+                 // Якщо $animeResult === null або невідомий тип (малоймовірно)
+                 sendMessage($chatId, '❌ Сталася невідома помилка при пошуку аніме.', 'text', null, true);
+             }
+        }, $preloaderText); // <-- Тепер передаємо текст прелоадера як третій аргумент
+
     } else {
         // Якщо callback_data не відповідає відомим форматам
         error_log("Unknown callback_data received: " . $data);
-        answerCallbackQuery($callbackQueryId, "Невідома дія", true); // Повідомляємо користувача
+        answerCallbackQuery($callbackQueryId, "Невідома дія"); // Повідомляємо користувача
     }
 }
-
-// Додаємо команди в меню бота
-setMyCommands();
 
 $content = file_get_contents("php://input");
 $update = json_decode($content, true);
@@ -395,6 +599,58 @@ if (isset($update["message"])) {
 
     // Викликаємо єдину функцію обробки, передаючи всі параметри
     processCallbackQuery($chatId, $callbackQueryId, $callbackData, $messageId, $update);
+}
+
+/**
+ * Реєструє/оновлює список команд для бота в Telegram.
+ */
+function registerTelegramCommands() {
+    // Перевіряємо, чи визначено токен (на випадок виклику з контексту без config)
+    if (!defined('BOT_TOKEN') || empty(BOT_TOKEN)) {
+        error_log("registerTelegramCommands: BOT_TOKEN is not defined or empty.");
+        return false;
+    }
+
+    // Список команд та їх описів
+    $commands = [
+        ['command' => 'start', 'description' => '🚀 Початок роботи / Перезапуск'],
+        ['command' => 'image', 'description' => '🖼️ Випадкове зображення за категорією'],
+        ['command' => 'top_movie', 'description' => '⭐ Топ фільмів (за рейтингом)'],
+        ['command' => 'popular_movie', 'description' => '🔥 Популярні фільми (зараз)'],
+        ['command' => 'random_movie', 'description' => '🎬 Випадковий фільм (за жанром)'], 
+        ['command' => 'top_anime', 'description' => '🍥 Топ аніме (за рейтингом)'],
+        ['command' => 'random_anime', 'description' => '⛩️ Випадкове аніме (за жанром)'],
+        ['command' => 'quote', 'description' => '💡 Випадкова цитата'],
+        ['command' => 'music_video', 'description' => '🎵 Випадковий музичний кліп'],
+        ['command' => 'funny_video', 'description' => '🤣 Випадкове смішне відео'],
+        ['command' => 'action', 'description' => '🤸 Випадкова дія'],
+        ['command' => 'true_or_false', 'description' => '⚖️ Гра: Правда або Брехня'],
+        ['command' => 'millionaire', 'description' => '💰 Гра: Мільйонер'],
+    ];
+
+    $url = API_URL . 'setMyCommands';
+    $postData = ['commands' => $commands];
+
+    $options = [
+        'http' => [
+            'method'  => 'POST',
+            'header'  => "Content-type: application/json\r\n",
+            'content' => json_encode($postData),
+            'ignore_errors' => true
+        ],
+    ];
+    $context  = stream_context_create($options);
+    $response = @file_get_contents($url, false, $context);
+    $responseData = json_decode($response, true);
+
+    if (!$responseData || !$responseData['ok']) {
+        error_log("Failed to set Telegram commands. Response: " . $response);
+        return false;
+    } else {
+        // Можна додати логування успіху, але це буде спамити лог при кожному /start
+        // error_log("Telegram commands successfully updated.");
+        return true;
+    }
 }
 
 ?>

@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="icon" type="image/jpeg" href="img/logo.jpeg">
     <style>
         :root {
@@ -43,7 +44,13 @@
             width: 100%;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
             gap: 10px;
         }
 
@@ -304,41 +311,62 @@
             gap: 10px;
             margin-top: 15px; /* Відступ від опису */
         }
-        .image-category-button {
-             /* Використовуємо стилі .command, але можемо трохи змінити */
+        .image-category-button, .anime-genre-button, .movie-genre-button {
+             /* Загальні стилі для кнопок вибору */
              flex-grow: 1;
              min-width: 130px;
+             margin: 5px; 
+        }
+
+        /* Стилі для посилання на Telegram */
+        .header-telegram-link {
+            color: #ffffff; /* Білий колір іконки */
+            font-size: 1.8rem; /* Збільшуємо розмір іконки */
+            text-decoration: none;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        
+        .header-telegram-link:hover {
+            color: #e9ecef; /* Світліший колір при наведенні */
+            transform: scale(1.1); /* Трохи збільшуємо при наведенні */
         }
     </style>
 </head>
 
 <body>
     <header>
-        <img src="img/logo.jpeg" alt="dumbieBOT Logo" class="header-logo">
-        <h1>@dumbieBOT Interface</h1>
+        <div class="header-brand">
+            <img src="img/logo.jpeg" alt="dumbieBOT Logo" class="header-logo">
+            <h1>dumbieBOT</h1>
+        </div>
+        <a href="https://t.me/dumbieBOT" target="_blank" rel="noopener noreferrer" class="header-telegram-link" title="dumbieBOT у Telegram">
+            <i class="fab fa-telegram-plane"></i>
+        </a>
     </header>
 
     <div class="page-wrapper">
         <aside class="sidebar">
             <div class="command-grid">
                 <!-- Кнопки тепер тут -->
-                <button class="command" data-command="/start">🚀 start</button> 
-                <button class="command" data-command="/image">🖼️ image</button>
-                <button class="command" data-command="/quote">❝ quote</button>
+                <!-- <button class="command" data-command="/start">🚀 start</button>  -->
+                
                 <button class="command" data-command="/top_movie">🎬 top movie</button>
                 <button class="command" data-command="/popular_movie">🔥 popular movie</button>
+                <button class="command" data-command="/random_movie">💻 random movie</button>
                 <button class="command" data-command="/top_anime">🍥 top anime</button>
                 <button class="command" data-command="/random_anime">🎲 random anime</button>
                 <button class="command" data-command="/music_video">🎵 music video</button>
-                <button class="command" data-command="/funny_video">😂 funny video</button>
-                <button class="command" data-command="/action">🤸 action</button>
-                <button class="command" data-command="/true_or_false">⚖️ true or false</button>
-                <button class="command" data-command="/millionaire">💰 millionaire</button>
+                <!-- <button class="command" data-command="/funny_video">🤣 funny video</button> -->
+                <button class="command" data-command="/image">🖼️ image</button>
+                <button class="command" data-command="/quote">❝ quote</button>
+                <button class="command" data-command="/action">🤸 Випадкова дія</button>
+                <button class="command" data-command="/true_or_false">⚖️ Правда/Брехня</button>
+                <button class="command" data-command="/millionaire">💰 Мільйонер</button>
             </div>
         </aside>
 
         <main class="content-area">
-            <div class="container">
+    <div class="container">
                 <!-- Залишився тільки блок виводу -->
                 <div class="output" id="output">
                      <p>Натисніть кнопку, щоб викликати команду бота.</p>
@@ -352,14 +380,19 @@
         const commandButtons = document.querySelectorAll('.command'); // Включаючи кнопки категорій
 
         commandButtons.forEach(button => {
-            // Додаємо перевірку, чи це кнопка категорії зображення
-            if (!button.classList.contains('image-category-button')) {
+            // Перевірка, чи це НЕ кнопка вибору або кнопка "Інше аніме/фільм"
+            if (!button.classList.contains('image-category-button') && 
+                !button.classList.contains('anime-genre-button') &&
+                !button.classList.contains('movie-genre-button') &&
+                !button.classList.contains('another-anime-button') &&
+                !button.classList.contains('another-movie-button'))
+            {
                 button.addEventListener('click', () => {
                     const command = button.getAttribute('data-command');
                     sendCommand(command);
                 });
             }
-            // Обробник для кнопок категорій додається в renderApiResponse
+            // Обробники для інших кнопок додаються в renderApiResponse
         });
 
         function sendCommand(command, action = 'get_command', extraData = {}) {
@@ -380,7 +413,7 @@
                 },
                 body: JSON.stringify(payload)
             })
-            .then(response => response.json())
+                .then(response => response.json())
             .then(data => {
                 renderApiResponse(command, data);
             })
@@ -395,13 +428,30 @@
 
             if (data.content && (data.type === 'text' || data.type === 'error')) {
                  outputDiv.innerHTML = data.content;
+                 // Шукаємо кнопки "Інше аніме/фільм" і додаємо обробник
+                 const anotherAnimeButton = outputDiv.querySelector('.another-anime-button');
+                 if (anotherAnimeButton) {
+                     anotherAnimeButton.addEventListener('click', handleAnotherAnimeClick);
+                 }
+                 const anotherMovieButton = outputDiv.querySelector('.another-movie-button');
+                 if (anotherMovieButton) {
+                      anotherMovieButton.addEventListener('click', handleAnotherMovieClick);
+                 }
             } else if (command === '/image' && data.type === 'image_categories' && data.content) {
-                // Нова обробка для кнопок категорій
                 outputDiv.innerHTML = data.content;
-                // Додаємо обробники до нових кнопок
                 document.querySelectorAll('.image-category-button').forEach(button => {
                     button.addEventListener('click', handleImageCategoryClick);
                 });
+            } else if (command === '/random_anime' && data.type === 'anime_genre_buttons' && data.content) {
+                 outputDiv.innerHTML = data.content;
+                 document.querySelectorAll('.anime-genre-button').forEach(button => {
+                     button.addEventListener('click', handleAnimeGenreClick);
+                 });
+            } else if (command === '/random_movie' && data.type === 'movie_genre_buttons' && data.content) {
+                 outputDiv.innerHTML = data.content;
+                 document.querySelectorAll('.movie-genre-button').forEach(button => {
+                     button.addEventListener('click', handleMovieGenreClick);
+                 });
             } else if (command === '/true_or_false' && data.type === 'tf_question_data') {
                 renderTFQuestion(data.content, data.fact_id);
             } else if (command === '/millionaire' && data.type === 'millionaire_question_data') {
@@ -412,11 +462,19 @@
             }
         }
 
+        // Нова функція для обробки кліку на жанр аніме
+        function handleAnimeGenreClick(event) {
+            const button = event.target;
+            const genreId = button.getAttribute('data-genre-id');
+            // Викликаємо sendCommand з новою дією та genre_id
+            sendCommand('/random_anime', 'get_random_anime_by_genre', { genre_id: genreId });
+        }
+        
         // Нова функція для обробки кліку на категорію зображення
         function handleImageCategoryClick(event) {
             const button = event.target;
             const category = button.getAttribute('data-category');
-            // Викликаємо sendCommand з новою дією та категорією
+            // Викликаємо sendCommand з дією для отримання зображення за категорією
             sendCommand('/image', 'get_image_category', { category: category });
         }
 
@@ -566,6 +624,36 @@
                 "'": '&#039;'
             };
             return str.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Нова функція для обробки кліку на "Інше аніме цього жанру"
+        function handleAnotherAnimeClick(event) {
+            const button = event.target;
+            const genreId = button.getAttribute('data-genre-id');
+            if (genreId) {
+                // Викликаємо sendCommand з тими ж параметрами, щоб отримати інше аніме
+                 sendCommand('/random_anime', 'get_random_anime_by_genre', { genre_id: genreId });
+            } else {
+                 console.error('Could not find genre_id on the another-anime button.');
+            }
+        }
+
+        // Нова функція для обробки кліку на жанр фільму
+        function handleMovieGenreClick(event) {
+            const button = event.target;
+            const genreId = button.getAttribute('data-genre-id');
+            sendCommand('/random_movie', 'get_random_movie_by_genre', { genre_id: genreId });
+        }
+
+        // Нова функція для обробки кліку на "Інший фільм"
+        function handleAnotherMovieClick(event) {
+            const button = event.target;
+            const genreId = button.getAttribute('data-genre-id');
+            if (genreId) {
+                 sendCommand('/random_movie', 'get_random_movie_by_genre', { genre_id: genreId });
+            } else {
+                 console.error('Could not find genre_id on the another-movie button.');
+            }
         }
 
     </script>

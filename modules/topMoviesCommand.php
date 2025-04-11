@@ -1,84 +1,68 @@
 <?php
-function topMovieCommand($chatId) {
-    $movieAuthKey = MOVIE_AUTH_KEY;
-    $page = random_int(1, 16);
-    // --- Перший запит: отримуємо список з англійськими назвами --- 
-    $listURL = "https://api.themoviedb.org/3/movie/top_rated?page={$page}"; // Без language
+require_once __DIR__ . '/../helpers/randomIndex.php';
 
-    $options = [
+function topMovieCommand($chatId) {
+    $apiKey = MOVIE_AUTH_KEY; // Використовуємо ключ v3
+    $page = randomIndex(1, 10); // Беремо з перших 10 сторінок для релевантності
+    
+    // Один запит для отримання списку фільмів українською
+    $listURL = "https://api.themoviedb.org/3/movie/top_rated?api_key={$apiKey}&language=uk-UA&page={$page}"; 
+
+    $opts = [
         'http' => [
-            'header' => [
-                "Authorization: Bearer {$movieAuthKey}",
-                "Accept: application/json"
-            ],
             'method' => 'GET',
+            'timeout' => 10,
             'ignore_errors' => true
-        ],
+        ]
     ];
-    $context = stream_context_create($options);
+    $context = stream_context_create($opts);
     $listResponse = @file_get_contents($listURL, false, $context);
 
     if ($listResponse === false) {
-        error_log("topMovieCommand: Failed to fetch movie list from TMDB API: " . $listURL);
-        return ['type' => 'error', 'content' => '❗ Помилка отримання списку фільмів.'];
+        error_log("topMovieCommand: Failed to fetch movie list from TMDB API (v3): " . $listURL);
+        return ['type' => 'error', 'content' => '❗ Помилка отримання списку топ фільмів.'];
     }
     $listData = json_decode($listResponse, true);
     if (!$listData || !isset($listData['results']) || count($listData['results']) === 0) {
         error_log("topMovieCommand: No results in movie list response: " . $listResponse);
-        return ['type' => 'error', 'content' => '❗ Не вдалося знайти фільми з високим рейтингом.'];
+        return ['type' => 'error', 'content' => '❗ Не вдалося знайти топ фільми.'];
     }
 
     try {
         // Вибираємо випадковий фільм зі списку
-        $randomMovieIndex = random_int(0, count($listData['results']) - 1);
-        $movieListItem = $listData['results'][$randomMovieIndex];
+        $randomIndex = randomIndex(0, count($listData['results']));
+        $movie = $listData['results'][$randomIndex];
         
-        $movieId = $movieListItem['id'] ?? null;
-        if (!$movieId) {
-             error_log("topMovieCommand: Movie ID not found in list item.");
-             return ['type' => 'error', 'content' => '❗ Помилка обробки даних фільму (відсутній ID).'];
+        // Витягуємо потрібні дані
+        $title = $movie['title'] ?? 'Назва невідома';
+        $releaseYear = isset($movie['release_date']) && strlen($movie['release_date']) >= 4 
+                         ? substr($movie['release_date'], 0, 4) 
+                         : 'N/A'; // Використовуємо N/A замість тексту
+        $voteAverage = isset($movie['vote_average']) ? number_format($movie['vote_average'], 1) : 'N/A';
+        $posterPath = $movie['poster_path'] ?? null;
+        $overview = $movie['overview'] ?? ''; // Опис (українською)
+
+        // Перевіряємо наявність основних даних
+        if (empty($title) || empty($overview) || $posterPath === null) {
+             error_log("topMovieCommand: Incomplete data for movie ID {$movie['id']}. Skipping.");
+             // Можна спробувати взяти наступний фільм або повернути помилку
+             // Для простоти повернемо помилку
+             return ['type' => 'error', 'content' => '❗ Не вдалося отримати повні дані для випадкового топ фільму. Спробуйте ще раз.'];
         }
 
-        // Отримуємо базові дані з першого запиту (включаючи англ. назву)
-        $englishTitle = $movieListItem['title'] ?? 'Назва невідома';
-        $originalTitleFallback = $movieListItem['original_title'] ?? $englishTitle;
-        $releaseYear = isset($movieListItem['release_date']) && strlen($movieListItem['release_date']) >= 4 
-                         ? substr($movieListItem['release_date'], 0, 4) 
-                         : 'Рік невідомий';
-        $voteAverage = isset($movieListItem['vote_average']) ? number_format($movieListItem['vote_average'], 1) : '-';
-        $posterPath = $movieListItem['poster_path'] ?? null;
-        $englishOverview = $movieListItem['overview'] ?? 'Опис відсутній.'; // Англ. опис як запасний
-
-        // --- Другий запит: отримуємо український опис --- 
-        $detailsURL = "https://api.themoviedb.org/3/movie/{$movieId}?language=uk-UA";
-        $detailsResponse = @file_get_contents($detailsURL, false, $context); // Використовуємо той самий контекст
-        $ukrainianOverview = $englishOverview; // За замовчуванням використовуємо англійський
-
-        if ($detailsResponse !== false) {
-            $detailsData = json_decode($detailsResponse, true);
-            if ($detailsData && isset($detailsData['overview']) && !empty($detailsData['overview'])) {
-                $ukrainianOverview = $detailsData['overview'];
-            } else {
-                 error_log("topMovieCommand: Failed to get Ukrainian overview for movie ID {$movieId}. Response: " . $detailsResponse);
-            }
-        } else {
-             error_log("topMovieCommand: Failed to fetch movie details for ID {$movieId}.");
-        }
-
-        // Повертаємо комбіновані дані
+        // Повертаємо дані (текст буде екрануватися в dumbiebot.php)
         return [
             'type' => 'movie_data',
-            'title' => $englishTitle, // Тепер це поле містить англійську назву
-            'original_title' => $originalTitleFallback, // Оригінальна для довідки
+            'title' => $title, 
             'release_year' => $releaseYear,
             'vote_average' => $voteAverage,
-            'overview' => $ukrainianOverview, // Український опис (або англ., якщо не знайдено)
+            'overview' => $overview, 
             'poster_path' => $posterPath
         ];
 
     } catch (Exception $e) {
         error_log("topMovieCommand: Error processing movie data: " . $e->getMessage());
-        return ['type' => 'error', 'content' => '❗ Вибачте, сталася помилка при обробці даних фільму.'];
+        return ['type' => 'error', 'content' => '❗ Вибачте, сталася помилка при обробці даних топ фільму.'];
     }
 }
 

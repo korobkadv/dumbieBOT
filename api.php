@@ -18,6 +18,7 @@ require_once './modules/funnyVideoCommand.php';
 require_once './modules/game/trueOrFalseGame.php';
 require_once './modules/game/millionaire.php';
 require_once './modules/actionCommand.php';
+require_once './modules/randomMovieCommands.php';
 
 // Функція для генерації заголовка/опису команди
 function getCommandDescription($command) {
@@ -33,8 +34,8 @@ function getCommandDescription($command) {
         '/funny_video' => '😂 Випадкове кумедне відео',
         '/action' => '🤸 Випадкова дія',
         '/true_or_false' => '⚖️ Гра: Правда або Брехня',
-        '/millionaire' => '💰 Гра: Мільйонер '
-        // Додайте описи для інших команд за потреби
+        '/millionaire' => '💰 Гра: Мільйонер ',
+        '/random_movie' => '🎬 Випадковий фільм',
     ];
     return $descriptions[$command] ?? 'Результат команди:'; // Повертаємо опис або стандартний текст
 }
@@ -50,8 +51,10 @@ function handleCommand($command, $chatId) {
             $result = ['type' => 'text', 'content' => $welcomeMessage];
             break;
         case '/image':
-            // Формуємо HTML з кнопками категорій
-            $description = getCommandDescription($command); // Отримуємо опис
+            error_log("API: Handling /image command - Start"); // LOG START
+            // Відновлюємо HTML з кнопками категорій
+            $description = getCommandDescription($command);
+            error_log("API: Handling /image command - Got description: " . ($description ?? 'null')); // LOG DESCRIPTION
             $htmlPrefix = "<div class=\"command-info\">{$description}</div>";
             $categories = [
                 'random' => '🎲 Випадкове', 'nature' => '🏞️ Пейзаж', 'buildings' => '🏙️ Місто',
@@ -60,14 +63,18 @@ function handleCommand($command, $chatId) {
             ];
             $buttonsHtml = '<div class="category-buttons">';
             foreach ($categories as $query => $label) {
-                $buttonsHtml .= "<button class=\"command image-category-button\" data-category=\"{$query}\">{$label}</button>";
+                // Додаємо клас 'image-category-button' для JS обробника
+                $buttonsHtml .= "<button class=\"command image-category-button\" data-category=\"{$query}\">{$label}</button>"; 
             }
             $buttonsHtml .= '</div>';
+            error_log("API: Handling /image command - Generated buttons HTML"); // LOG HTML
             
-            // Повертаємо новий тип відповіді
+            // Повертаємо тип 'image_categories', щоб JS міг обробити кнопки
             $result = ['type' => 'image_categories', 'content' => $htmlPrefix . $buttonsHtml];
+            error_log("API: Handling /image command - Prepared result array"); // LOG RESULT PREP
             break;
         case '/quote':
+            error_log("API: Handling /quote command"); // LOG for next command
             $quoteData = quoteCommand($chatId);
              if ($quoteData['type'] === 'quote_data') {
                 $quote = htmlspecialchars($quoteData['quote']);
@@ -110,7 +117,6 @@ function handleCommand($command, $chatId) {
             }
             break;
         case '/top_anime':
-        case '/random_anime':
             $animeFunction = ($command === '/top_anime') ? 'topAnimeCommand' : 'randomAnimeCommand';
             $animeData = $animeFunction($chatId);
             if ($animeData['type'] === 'anime_data') {
@@ -200,7 +206,47 @@ function handleCommand($command, $chatId) {
              error_log("API: Command {$command} is not supported via API.");
              $result = ['type' => 'error', 'content' => "Команда {$command} не підтримується через API."];
              break;
-
+        case '/random_anime':
+            $description = getCommandDescription($command);
+            $htmlPrefix = "<div class=\"command-info\">{$description}</div>";
+            
+            $genres = getAnimeGenres();
+            if (empty($genres)) {
+                 $result = ['type' => 'error', 'content' => $htmlPrefix . '<p>❌ Не вдалося завантажити список жанрів аніме.</p>'];
+            } else {
+                 $buttonsHtml = '<div class="category-buttons">';
+                 // Додаємо кнопку "Будь-який жанр" першою
+                 $buttonsHtml .= "<button class=\"command anime-genre-button\" data-genre-id=\"any\">🎲 Будь-який жанр</button>";
+                 
+                 foreach ($genres as $genre) {
+                     $genreName = htmlspecialchars($genre['name']);
+                     $genreId = $genre['id'];
+                     $buttonsHtml .= "<button class=\"command anime-genre-button\" data-genre-id=\"{$genreId}\">{$genreName}</button>";
+                 }
+                 $buttonsHtml .= '</div>';
+                 $result = ['type' => 'anime_genre_buttons', 'content' => $htmlPrefix . $buttonsHtml];
+            }
+            break;
+        case '/random_movie':
+            $description = getCommandDescription($command);
+            $htmlPrefix = "<div class=\"command-info\">{$description}</div>";
+            
+            $genres = getMovieGenres();
+            if (empty($genres)) {
+                 $result = ['type' => 'error', 'content' => $htmlPrefix . '<p>❌ Не вдалося завантажити список жанрів фільмів.</p>'];
+            } else {
+                 $buttonsHtml = '<div class="category-buttons">';
+                 $buttonsHtml .= "<button class=\"command movie-genre-button\" data-genre-id=\"any\">🎲 Будь-який жанр</button>";
+                 
+                 foreach ($genres as $genre) {
+                     $genreName = htmlspecialchars($genre['name']);
+                     $genreId = $genre['id'];
+                     $buttonsHtml .= "<button class=\"command movie-genre-button\" data-genre-id=\"{$genreId}\">{$genreName}</button>";
+                 }
+                 $buttonsHtml .= '</div>';
+                 $result = ['type' => 'movie_genre_buttons', 'content' => $htmlPrefix . $buttonsHtml];
+            }
+            break;
         default:
              error_log("API: Unknown command received in handleCommand: " . $command); 
              $result = ['type' => 'error', 'content' => '<p>Невідома команда.</p>'];
@@ -291,6 +337,94 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              }
              $responseArray = $imageData;
         }
+    } elseif ($apiAction === 'get_random_anime_by_genre' && $command === '/random_anime') {
+        $genreId = $data['genre_id'] ?? null;
+        
+        $animeResult = null;
+        $isAnyGenre = ($genreId === 'any'); // Перевіряємо, чи це "any"
+        
+        if ($isAnyGenre) {
+            // Викликаємо функцію для абсолютно випадкового аніме
+            $animeResult = getTrulyRandomAnime(); 
+        } elseif ($genreId !== null && is_numeric($genreId)) {
+            // Викликаємо getRandomAnimeByGenre БЕЗ екранування
+            $animeResult = getRandomAnimeByGenre((int)$genreId, false); 
+        } else {
+             http_response_code(400);
+             $responseArray = ['type' => 'error', 'content' => 'ID жанру не вказано або некоректний.'];
+             // Одразу відправляємо помилку, якщо ID не "any" і не число
+             echo json_encode($responseArray); 
+             exit; 
+        }
+            
+        if ($animeResult && $animeResult['type'] === 'anime_data') {
+            // Форматуємо результат в HTML
+            $title = htmlspecialchars($animeResult['title']);
+            $score = htmlspecialchars($animeResult['score']);
+            $year = htmlspecialchars($animeResult['year']);
+            $imageUrl = htmlspecialchars($animeResult['image_url']);
+
+            $htmlContent = "<p><b>{$title}</b></p>";
+            $htmlContent .= "<p>⭐ Рейтинг: {$score} | 📅 Рік: {$year}</p>"; 
+            $htmlContent .= "<img src=\"{$imageUrl}\" alt=\"{$title}\" class=\"info-poster\">";
+                
+            // Додаємо кнопку "Інше аніме" з відповідним текстом та data-genre-id
+            $buttonText = $isAnyGenre ? "🔄 Інше випадкове аніме" : "🔄 Інше аніме цього жанру";
+            $buttonGenreId = $isAnyGenre ? "any" : (int)$genreId;
+            $htmlContent .= "<div style=\"margin-top: 15px; text-align: center;\"><button class='command another-anime-button' data-genre-id='{$buttonGenreId}'>{$buttonText}</button></div>";
+                
+            $responseArray = ['type' => 'text', 'content' => $htmlContent];
+        } else { // Обробка помилки від getTrulyRandomAnime або getRandomAnimeByGenre
+             $responseArray = [
+                 'type' => 'error',
+                 'content' => "<p>" . htmlspecialchars($animeResult['content'] ?? 'Невідома помилка аніме.') . "</p>"
+             ];
+        }
+        // Успішна відповідь або помилка функції (не 400)
+        // echo json_encode($responseArray); // Видаляємо, бо echo буде в кінці скрипта
+    } elseif ($apiAction === 'get_random_movie_by_genre' && $command === '/random_movie') {
+        $genreId = $data['genre_id'] ?? null;
+        $movieResult = null;
+        $isAnyGenre = ($genreId === 'any');
+
+        if ($isAnyGenre) {
+            $movieResult = getRandomMovie(null, false); // null для 'any', false для екранування
+        } elseif ($genreId !== null && is_numeric($genreId)) {
+            $movieResult = getRandomMovie((int)$genreId, false);
+        } else {
+             http_response_code(400);
+             $responseArray = ['type' => 'error', 'content' => 'ID жанру фільму не вказано або некоректний.'];
+             echo json_encode($responseArray); 
+             exit; 
+        }
+
+        if ($movieResult && $movieResult['type'] === 'movie_data') {
+            $title = htmlspecialchars($movieResult['title']); // Тут вже звичайний текст
+            $rating = htmlspecialchars($movieResult['vote_average']);
+            $year = htmlspecialchars($movieResult['release_year']);
+            $overview = htmlspecialchars($movieResult['overview']);
+            $posterPath = $movieResult['poster_path'];
+            $posterUrl = $posterPath ? "https://image.tmdb.org/t/p/w500" . htmlspecialchars($posterPath) : null;
+
+            $htmlContent = "<p><b>{$title} ({$year})</b></p>";
+            $htmlContent .= "<p>⭐ Рейтинг: {$rating}</p>";
+             if ($posterUrl) {
+                 $htmlContent .= "<img src=\"{$posterUrl}\" alt=\"{$title}\" class=\"info-poster\">";
+             }
+            $htmlContent .= "<p>{$overview}</p>";
+
+            // Додаємо кнопку "Інший фільм"
+            $buttonText = $isAnyGenre ? "🔄 Інший випадковий фільм" : "🔄 Інший фільм цього жанру";
+            $buttonGenreId = $isAnyGenre ? "any" : (int)$genreId;
+            $htmlContent .= "<div style=\"margin-top: 15px; text-align: center;\"><button class='command another-movie-button' data-genre-id='{$buttonGenreId}'>{$buttonText}</button></div>";
+                
+            $responseArray = ['type' => 'text', 'content' => $htmlContent];
+        } else { // Помилка від getRandomMovie
+             $responseArray = [
+                 'type' => 'error',
+                 'content' => "<p>" . htmlspecialchars($movieResult['content'] ?? 'Невідома помилка фільму.') . "</p>"
+             ];
+        }
     } else {
          // Стандартна обробка команди (отримання даних або питання гри)
          if ($command === '/true_or_false') {
@@ -320,22 +454,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Додаємо HTML-префікс до ВСІХ фінальних відповідей, що мають 'content'
     // КРІМ випадку з кнопками категорій зображень (там префікс вже додано в handleCommand)
-    if (isset($responseArray['content']) && $responseArray['type'] !== 'image_categories') {
+    if (isset($responseArray['content']) && $responseArray['type'] !== 'image_categories' && $responseArray['type'] !== 'anime_genre_buttons' && $responseArray['type'] !== 'movie_genre_buttons') {
         // Якщо відповідь - це помилка і ще не має <p>, додаємо його
         if ($responseArray['type'] === 'error' && strpos($responseArray['content'], '<p>') === false) {
             $responseArray['content'] = "<p>" . $responseArray['content'] . "</p>";
         }
         // Додаємо префікс
         $description = getCommandDescription($command);
-        // Для get_image_category беремо опис батьківської команди /image
         if ($apiAction === 'get_image_category') { 
             $description = getCommandDescription('/image');
+        } elseif ($apiAction === 'get_random_anime_by_genre') {
+             $description = getCommandDescription('/random_anime');
+        } elseif ($apiAction === 'get_random_movie_by_genre') {
+             $description = getCommandDescription('/random_movie');
         }
         $htmlPrefix = "<div class=\"command-info\">{$description}</div>";
         $responseArray['content'] = $htmlPrefix . $responseArray['content'];
     }
     
+    error_log("API: Final response array before json_encode: " . print_r($responseArray, true)); // LOG RESPONSE ARRAY
     echo json_encode($responseArray);
+    error_log("API: Successfully sent JSON response."); // LOG AFTER SEND
 
 } else {
     http_response_code(405);
